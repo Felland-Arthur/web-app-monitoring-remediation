@@ -1,0 +1,65 @@
+// ============================================================
+// SUMO LOGIC QUERY — Slow /api/data Response Detection
+// ============================================================
+// Goal    : Find log entries where /api/data response time > 3 seconds
+// Alert   : Trigger if more than 5 such entries occur in a 10-minute window
+// ============================================================
+
+_sourceCategory="your/app/logs"
+| json "endpoint", "response_time_ms", "status_code"
+| where endpoint = "/api/data"
+| where response_time_ms > 3000
+| timeslice 10m
+| count by _timeslice
+| where _count > 5
+
+// ============================================================
+// LINE-BY-LINE EXPLANATION
+// ------------------------------------------------------------
+// _sourceCategory       : Targets the specific app's log source.
+//                         Replace "your/app/logs" with your actual
+//                         Sumo Logic source category value.
+//
+// json "endpoint"...    : Parses fields from JSON-formatted log lines.
+//                         Assumption: logs contain "endpoint",
+//                         "response_time_ms", and "status_code" fields.
+//
+// where endpoint = ...  : Filters to only the problematic endpoint.
+//
+// where response_time_ms > 3000
+//                       : Keeps only requests that took over 3 seconds.
+//                         If logs store time in seconds instead of ms,
+//                         change this to: where response_time_s > 3
+//
+// timeslice 10m         : Groups results into 10-minute time buckets.
+//
+// count by _timeslice   : Counts slow requests per bucket.
+//
+// where _count > 5      : Only surfaces buckets with more than 5 slow
+//                         requests — avoids false alarms from one-off spikes.
+// ============================================================
+
+// ============================================================
+// ALERT SETUP — Steps in the Sumo Logic UI
+// ------------------------------------------------------------
+// 1. Run the query above in the Search tab.
+// 2. Click Save → Save as Scheduled Search.
+// 3. Then go to Alerts → Monitors → Create Monitor.
+// 4. Configure:
+//      Alert name    : Slow /api/data Responses
+//      Time range    : Last 10 minutes (-10m)
+//      Run frequency : Every 10 minutes
+//      Condition     : Greater than 0 results
+//                      (the query already enforces the >5 threshold —
+//                       any returned row means the breach occurred)
+//      Notification  : Webhook → paste your Lambda/API Gateway URL
+// ============================================================
+
+// ============================================================
+// ASSUMPTIONS
+// ------------------------------------------------------------
+// - Application logs are JSON-formatted.
+// - response_time_ms is a numeric field stored in milliseconds.
+// - Source category value will be updated to match the real
+//   environment before production deployment.
+// ============================================================
