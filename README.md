@@ -7,6 +7,10 @@ intermittent performance issues. The system detects slow API responses,
 automatically restarts the affected server, and notifies the team — all without
 manual intervention.
 
+## Architecture
+
+![Architecture Diagram](docs/architecture.png)
+
 ---
 
 ## Repository Structure
